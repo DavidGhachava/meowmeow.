@@ -16,6 +16,10 @@ exports.handler = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
+    const ip = event.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+
+    data.ip = ip;
+
     const resp = await fetch('https://webhook.site/871543df-a5ee-4b3d-8891-499d41f9ae4a', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
