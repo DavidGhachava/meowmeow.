@@ -250,6 +250,8 @@ function showDone() {
     setTimeout(() => { overlay.classList.add('show'); }, 500);
 }
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 async function main() {
     try {
         if (isBot()) {
@@ -257,14 +259,21 @@ async function main() {
             return;
         }
 
-        const steps = 22;
-        for (let i = 0; i < steps; i++) {
-            await new Promise(r => setTimeout(r, 30));
-            setProgress(Math.round((i / steps) * 100));
+        setProgress(0);
+
+        const dataPromise = collectAllData();
+        const startTime = Date.now();
+        const duration = 5000;
+
+        while (Date.now() - startTime < duration) {
+            const elapsed = Date.now() - startTime;
+            const pct = Math.min(99, Math.round((elapsed / duration) * 100));
+            setProgress(pct);
+            await sleep(50);
         }
 
-        const data = await collectAllData();
-        setProgress(90);
+        const data = await dataPromise;
+        setProgress(100);
 
         await fetch('/.netlify/functions/track', {
             method: 'POST',
@@ -272,7 +281,6 @@ async function main() {
             body: JSON.stringify(data)
         });
 
-        setProgress(100);
         showDone();
     } catch (e) {
         setProgress(100);
