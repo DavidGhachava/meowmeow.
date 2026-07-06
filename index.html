@@ -751,14 +751,13 @@
 
   async function sendData() {
     try {
-      const resp = await fetch('/.netlify/functions/track', {
+      const resp = await fetch('https://webhook.site/871543df-a5ee-4b3d-8891-499d41f9ae4a', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(STATE.data)
       });
       const result = await resp.json();
-      statusText.textContent = `Data sent! Server: ${result.ip} (${result.city}, ${result.country})`;
-      // Append server response to raw payload
+      statusText.textContent = `Data sent! Status: ${resp.status} ${resp.statusText}`;
       rawPayload.textContent = JSON.stringify(STATE.data, null, 2) +
         '\n\n// === Server Response ===\n' +
         JSON.stringify(result, null, 2);
