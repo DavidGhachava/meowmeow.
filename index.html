@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silent Data Collector</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #00ff41;
+    font-size: 1.5em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #00aa2a;
+    font-size: 0.75em;
+    margin-bottom: 20px;
+    opacity: 0.7;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .status-bar {
+    background: #0d1a0d;
+    border: 1px solid #00ff41;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  .status-dot.collecting { background: #ffaa00; animation: blink 0.8s infinite; }
+  .status-dot.sent { background: #00ff41; }
+  .status-dot.error { background: #ff3333; }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  .status-text { font-size: 0.85em; }
+  .status-count { font-size: 0.85em; color: #00aa2a; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #0d1a0d;
+    border: 1px solid #0f2a0f;
+    border-radius: 4px;
+    padding: 12px 14px;
+    transition: border-color 0.3s;
+  }
+  .card.collected { border-color: #00ff41; }
+  .card.error { border-color: #ff3333; }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+  .card-title {
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #00cc33;
+    font-weight: bold;
+  }
+  .card-check {
+    font-size: 0.9em;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .card.collected .card-check { opacity: 1; color: #00ff41; }
+  .card.error .card-check { opacity: 1; color: #ff3333; content: '!'; }
+  .card-body {
+    font-size: 0.78em;
+    color: #00aa2a;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  .card-body::-webkit-scrollbar { width: 4px; }
+  .card-body::-webkit-scrollbar-track { background: #0a0a0a; }
+  .card-body::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 2px; }
+  .raw-data {
+    background: #0d1a0d;
+    border: 1px solid #0f2a0f;
+    border-radius: 4px;
+    padding: 14px;
+    margin-bottom: 20px;
+  }
+  .raw-data summary {
+    cursor: pointer;
+    color: #00cc33;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .raw-data pre {
+    margin-top: 10px;
+    font-size: 0.7em;
+    color: #007a1a;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .disclaimer {
+    text-align: center;
+    color: #005a10;
+    font-size: 0.65em;
+    border-top: 1px solid #0f2a0f;
+    padding-top: 16px;
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .footer-info {
+    text-align: center;
+    color: #005a10;
+    font-size: 0.65em;
+    margin-top: 10px;
+  }
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    body { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Silent Data Collector</h1>
+  <p class="subtitle">Educational Demonstration &bull; No data leaves your browser without consent</p>
+
+  <div class="status-bar">
+    <div>
+      <span class="status-dot collecting" id="statusDot"></span>
+      <span class="status-text" id="statusText">Initializing collection...</span>
+    </div>
+    <span class="status-count" id="statusCount">0 / 21 collected</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="raw-data">
+    <summary>Raw JSON Payload</summary>
+    <pre id="rawPayload">// Waiting for collection to complete...</pre>
+  </div>
+
+  <div class="disclaimer">
+    <strong>DISCLAIMER:</strong> This page is for <u>educational purposes only</u>.<br>
+    It demonstrates how browser APIs can be accessed without user permission.<br>
+    This should <u>NOT</u> be used without explicit user knowledge and consent.<br>
+    Respect privacy laws including GDPR, CCPA, and others.
+  </div>
+  <div class="footer-info">
+    Collection runs automatically on page load &mdash; no interaction needed
+  </div>
+</div>
+
+<script>
+(() => {
+  // ============================================================
+  // Silent Data Collector
+  // ============================================================
+  // Collects browser/device data passively using standard APIs.
+  // NO geolocation, camera, mic, or permission prompts used.
+  // Everything runs automatically on page load.
+  // ============================================================
+
+  const STATE = {
+    collected: 0,
+    total: 21,
+    data: {},
+    errors: []
+  };
+
+  // DOM refs
+  const gridEl = document.getElementById('grid');
+  const statusText = document.getElementById('statusText');
+  const statusDot = document.getElementById('statusDot');
+  const statusCount = document.getElementById('statusCount');
+  const rawPayload = document.getElementById('rawPayload');
+
+  // Card definitions: title and the async collector function
+  const CARD_DEFS = [
+    { id: 'canvas',    title: 'Canvas Fingerprint',       collector: collectCanvasFingerprint },
+    { id: 'webgl',     title: 'WebGL Fingerprint',        collector: collectWebGL },
+    { id: 'fonts',     title: 'Installed Fonts',          collector: collectFonts },
+    { id: 'media',     title: 'Media Devices',            collector: collectMediaDevices },
+    { id: 'battery',   title: 'Battery Status',           collector: collectBattery },
+    { id: 'network',   title: 'Network Information',      collector: collectNetworkInfo },
+    { id: 'perf',      title: 'Performance Timing',       collector: collectPerformance },
+    { id: 'orientation',title: 'Device Orientation',       collector: collectOrientation },
+    { id: 'gamepad',   title: 'Gamepad Detection',        collector: collectGamepad },
+    { id: 'plugins',   title: 'Plugins / Extensions',     collector: collectPlugins },
+    { id: 'window',    title: 'Window Features',          collector: collectWindowFeatures },
+    { id: 'timezone',  title: 'Timezone & Locale',        collector: collectTimezone },
+    { id: 'language',  title: 'Language Details',         collector: collectLanguage },
+    { id: 'touch',     title: 'Touch / Pointer / Hover',  collector: collectTouch },
+    { id: 'theme',     title: 'Theme Preference',         collector: collectTheme },
+    { id: 'ua',        title: 'User Agent & Platform',    collector: collectUA },
+    { id: 'screen',    title: 'Screen Resolution',        collector: collectScreen },
+    { id: 'hardware',  title: 'CPU / Memory / Hardware',  collector: collectHardware },
+    { id: 'privacy',   title: 'Cookie & DNT Status',      collector: collectPrivacy },
+    { id: 'connectivity',title: 'Online / Offline',        collector: collectConnectivity },
+    { id: 'page',      title: 'Page URL & Referrer',      collector: collectPageInfo }
+  ];
+
+  // --- Build UI ---
+  CARD_DEFS.forEach(def => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'card-' + def.id;
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">${def.title}</span>
+        <span class="card-check">&#10003;</span>
+      </div>
+      <div class="card-body" id="body-${def.id}"><em>waiting...</em></div>
+    `;
+    gridEl.appendChild(card);
+  });
+
+  function updateCard(id, status, label) {
+    const card = document.getElementById('card-' + id);
+    const body = document.getElementById('body-' + id);
+    if (!card || !body) return;
+    card.className = 'card ' + status;
+    body.textContent = label;
+    if (status === 'collected') {
+      STATE.collected++;
+      statusCount.textContent = `${STATE.collected} / ${STATE.total} collected`;
+      if (STATE.collected === STATE.total) {
+        statusDot.className = 'status-dot sent';
+        statusText.textContent = 'All data collected! Sending...';
+      }
+    }
+  }
+
+  function updateRaw() {
+    rawPayload.textContent = JSON.stringify(STATE.data, null, 2);
+  }
+
+  // ============================================================
+  // COLLECTOR FUNCTIONS
+  // ============================================================
+
+  // 1. Canvas fingerprint (unique ID based on GPU/driver rendering)
+  async function collectCanvasFingerprint() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(0, 0, 50, 50);
+      ctx.fillStyle = '#069';
+      ctx.fillText('Cwm fjordbank glyphs vext quiz, \ud83d\ude03', 2, 15);
+      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+      ctx.font = '18px Arial';
+      ctx.fillText('abcdefghijklmnopqrstuvwxyz', 4, 45);
+      ctx.beginPath();
+      ctx.arc(100, 100, 50, 0, Math.PI * 2);
+      ctx.strokeStyle = '#123';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      return { hash: canvas.toDataURL().length, dataURL: canvas.toDataURL().slice(0, 100) + '...' };
+    } catch (e) {
+      throw new Error('Canvas: ' + e.message);
+    }
+  }
+
+  // 2. WebGL fingerprint (GPU model, renderer, vendor)
+  async function collectWebGL() {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) return { supported: false };
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        supported: true,
+        vendor: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'N/A',
+        renderer: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'N/A',
+        version: gl.getParameter(gl.VERSION),
+        shadingLanguageVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+        maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+        extensions: gl.getSupportedExtensions()
+      };
+    } catch (e) {
+      throw new Error('WebGL: ' + e.message);
+    }
+  }
+
+  // 3. Installed fonts via font measuring technique
+  async function collectFonts() {
+    try {
+      const baseFonts = ['monospace', 'sans-serif', 'serif'];
+      const fontList = [
+        'Arial', 'Arial Black', 'Arial Narrow', 'Arvo', 'Bangers', 'Baskerville',
+        'Bebas Neue', 'Book Antiqua', 'Calibri', 'Cambria', 'Candara', 'Century Gothic',
+        'Comic Sans MS', 'Consolas', 'Courier New', 'DejaVu Sans', 'Didot',
+        'Droid Sans', 'Fira Sans', 'Franklin Gothic Heavy', 'Futura', 'Garamond',
+        'Geneva', 'Georgia', 'Gill Sans', 'Helvetica', 'Impact', 'Lato', 'Lucida Console',
+        'Lucida Grande', 'Merriweather', 'Montserrat', 'Noto Sans', 'Noto Serif',
+        'Open Sans', 'Optima', 'Oswald', 'Palatino', 'Playfair Display', 'Poppins',
+        'Proxima Nova', 'Raleway', 'Roboto', 'Roboto Condensed', 'Roboto Mono',
+        'Segoe Print', 'Segoe Script', 'Segoe UI', 'Skia', 'Source Sans Pro',
+        'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Ubuntu', 'Verdana',
+        'Webdings', 'Wingdings'
+      ];
+      const body = document.body;
+      const dummy = document.createElement('div');
+      const text = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      dummy.textContent = text;
+      dummy.style.position = 'absolute';
+      dummy.style.left = '-9999px';
+      dummy.style.top = '-9999px';
+      dummy.style.visibility = 'hidden';
+      dummy.style.whiteSpace = 'nowrap';
+      dummy.style.fontSize = '72px';
+      body.appendChild(dummy);
+
+      const baseWidths = {};
+      baseFonts.forEach(base => {
+        dummy.style.fontFamily = base;
+        baseWidths[base] = dummy.offsetWidth;
+      });
+
+      const installed = [];
+      fontList.forEach(font => {
+        let detected = false;
+        for (const base of baseFonts) {
+          dummy.style.fontFamily = `"${font}", ${base}`;
+          if (dummy.offsetWidth !== baseWidths[base]) {
+            detected = true;
+            break;
+          }
+        }
+        if (detected) installed.push(font);
+      });
+
+      body.removeChild(dummy);
+      return { count: installed.length, fonts: installed };
+    } catch (e) {
+      throw new Error('Fonts: ' + e.message);
+    }
+  }
+
+  // 4. Media devices (enumerateDevices - no permission needed)
+  async function collectMediaDevices() {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        return { supported: false };
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return {
+        count: devices.length,
+        audioInput: devices.filter(d => d.kind === 'audioinput').length,
+        audioOutput: devices.filter(d => d.kind === 'audiooutput').length,
+        videoInput: devices.filter(d => d.kind === 'videoinput').length,
+        // Device labels are only available after permission, but we can report kinds
+        details: devices.map(d => ({ kind: d.kind, label: d.label || '(hidden)' }))
+      };
+    } catch (e) {
+      throw new Error('MediaDevices: ' + e.message);
+    }
+  }
+
+  // 5. Battery status
+  async function collectBattery() {
+    try {
+      if (!navigator.getBattery) return { supported: false };
+      const bat = await navigator.getBattery();
+      return {
+        charging: bat.charging,
+        level: Math.round(bat.level * 100) + '%',
+        chargingTime: bat.chargingTime === Infinity ? 'Infinity' : bat.chargingTime + 's',
+        dischargingTime: bat.dischargingTime === Infinity ? 'Infinity' : bat.dischargingTime + 's'
+      };
+    } catch (e) {
+      throw new Error('Battery: ' + e.message);
+    }
+  }
+
+  // 6. Network information
+  async function collectNetworkInfo() {
+    try {
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (!conn) return { supported: false };
+      return {
+        effectiveType: conn.effectiveType,
+        downlink: conn.downlink + ' Mbps',
+        downlinkMax: conn.downlinkMax != null ? conn.downlinkMax + ' Mbps' : 'N/A',
+        rtt: conn.rtt + ' ms',
+        saveData: !!conn.saveData,
+        type: conn.type
+      };
+    } catch (e) {
+      throw new Error('Network: ' + e.message);
+    }
+  }
+
+  // 7. Performance timing
+  async function collectPerformance() {
+    try {
+      const perf = window.performance;
+      if (!perf) return { supported: false };
+      const nav = perf.getEntriesByType ? perf.getEntriesByType('navigation')[0] : perf.timing;
+      if (!nav) return { supported: false };
+      if (nav.domContentLoadedEventEnd) {
+        // PerformanceNavigationTiming API
+        return {
+          dns: Math.round(nav.domainLookupEnd - nav.domainLookupStart) + ' ms',
+          tcp: Math.round(nav.connectEnd - nav.connectStart) + ' ms',
+          tls: nav.secureConnectionStart ? Math.round(nav.requestStart - nav.secureConnectionStart) + ' ms' : 'N/A',
+          ttfb: Math.round(nav.responseStart - nav.requestStart) + ' ms',
+          domContentLoaded: Math.round(nav.domContentLoadedEventEnd - nav.domContentLoadedEventStart) + ' ms',
+          domComplete: Math.round(nav.domComplete - nav.domInteractive) + ' ms',
+          total: Math.round(nav.loadEventEnd - nav.startTime || nav.fetchStart) + ' ms',
+          redirects: Math.round(nav.redirectEnd - nav.redirectStart) + ' ms'
+        };
+      }
+      // Fallback to legacy PerformanceTiming
+      const t = perf.timing;
+      return {
+        dns: (t.domainLookupEnd - t.domainLookupStart) + ' ms',
+        tcp: (t.connectEnd - t.connectStart) + ' ms',
+        ttfb: (t.responseStart - t.navigationStart) + ' ms',
+        domReady: (t.domContentLoadedEventEnd - t.navigationStart) + ' ms',
+        loadComplete: (t.loadEventEnd - t.navigationStart) + ' ms',
+        redirects: (t.redirectEnd - t.redirectStart) + ' ms'
+      };
+    } catch (e) {
+      throw new Error('Performance: ' + e.message);
+    }
+  }
+
+  // 8. Device orientation support
+  async function collectOrientation() {
+    try {
+      return {
+        supported: !!window.DeviceOrientationEvent,
+        absoluteSupported: !!window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== 'function',
+        motionSupported: !!window.DeviceMotionEvent,
+        orientation: window.screen && window.screen.orientation ? window.screen.orientation.type : 'N/A',
+        angle: window.screen && window.screen.orientation ? window.screen.orientation.angle : 'N/A'
+      };
+    } catch (e) {
+      throw new Error('Orientation: ' + e.message);
+    }
+  }
+
+  // 9. Gamepad detection
+  async function collectGamepad() {
+    try {
+      const gp = navigator.getGamepads ? navigator.getGamepads() : [];
+      const connected = [];
+      for (let i = 0; i < gp.length; i++) {
+        if (gp[i]) connected.push({ id: gp[i].id, index: gp[i].index, buttons: gp[i].buttons.length, axes: gp[i].axes.length });
+      }
+      return {
+        apiSupported: !!navigator.getGamepads,
+        connectedCount: connected.length,
+        gamepads: connected
+      };
+    } catch (e) {
+      throw new Error('Gamepad: ' + e.message);
+    }
+  }
+
+  // 10. Plugins / extensions list
+  async function collectPlugins() {
+    try {
+      const plugins = navigator.plugins;
+      if (!plugins || plugins.length === 0) return { supported: false };
+      const list = [];
+      for (let i = 0; i < plugins.length; i++) {
+        list.push({ name: plugins[i].name, filename: plugins[i].filename, description: plugins[i].description });
+      }
+      return { count: list.length, plugins: list };
+    } catch (e) {
+      throw new Error('Plugins: ' + e.message);
+    }
+  }
+
+  // 11. Window features
+  async function collectWindowFeatures() {
+    try {
+      return {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        outerWidth: window.outerWidth,
+        outerHeight: window.outerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+        colorDepth: window.screen ? window.screen.colorDepth : 'N/A',
+        pixelDepth: window.screen ? window.screen.pixelDepth : 'N/A',
+        availWidth: window.screen ? window.screen.availWidth : 'N/A',
+        availHeight: window.screen ? window.screen.availHeight : 'N/A'
+      };
+    } catch (e) {
+      throw new Error('Window: ' + e.message);
+    }
+  }
+
+  // 12. Timezone (IANA + offset)
+  async function collectTimezone() {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const offset = -new Date().getTimezoneOffset();
+      const offsetStr = (offset >= 0 ? '+' : '') + Math.floor(offset / 60) + ':' + String(Math.abs(offset % 60)).padStart(2, '0');
+      return {
+        ianaTimezone: tz,
+        offset: offsetStr,
+        offsetMinutes: offset
+      };
+    } catch (e) {
+      throw new Error('Timezone: ' + e.message);
+    }
+  }
+
+  // 13. Language details
+  async function collectLanguage() {
+    try {
+      return {
+        language: navigator.language,
+        languages: navigator.languages,
+        systemLanguage: navigator.systemLanguage || 'N/A',
+        userLanguage: navigator.userLanguage || 'N/A'
+      };
+    } catch (e) {
+      throw new Error('Language: ' + e.message);
+    }
+  }
+
+  // 14. Touch / pointer / hover capabilities
+  async function collectTouch() {
+    try {
+      return {
+        touchSupported: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+        maxTouchPoints: navigator.maxTouchPoints || 0,
+        pointerEnabled: !!navigator.pointerEnabled || !!window.PointerEvent,
+        hoverSupported: window.matchMedia('(hover: hover)').matches,
+        anyHoverSupported: window.matchMedia('(any-hover: hover)').matches,
+        coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+        finePointer: window.matchMedia('(pointer: fine)').matches
+      };
+    } catch (e) {
+      throw new Error('Touch: ' + e.message);
+    }
+  }
+
+  // 15. Theme preference (dark/light mode)
+  async function collectTheme() {
+    try {
+      const dark = window.matchMedia('(prefers-color-scheme: dark)');
+      const light = window.matchMedia('(prefers-color-scheme: light)');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const highContrast = window.matchMedia('(prefers-contrast: high)');
+      return {
+        darkMode: dark.matches,
+        lightMode: light.matches,
+        reducedMotion: reducedMotion.matches,
+        highContrast: highContrast.matches,
+        colorScheme: dark.matches ? 'dark' : light.matches ? 'light' : 'unknown'
+      };
+    } catch (e) {
+      throw new Error('Theme: ' + e.message);
+    }
+  }
+
+  // 16. User agent, platform, vendor
+  async function collectUA() {
+    try {
+      return {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        vendor: navigator.vendor,
+        vendorSub: navigator.vendorSub || 'N/A',
+        product: navigator.product,
+        productSub: navigator.productSub || 'N/A',
+        appName: navigator.appName,
+        appVersion: navigator.appVersion,
+        appCodeName: navigator.appCodeName,
+        oscpu: navigator.oscpu || 'N/A',
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemory: navigator.deviceMemory
+      };
+    } catch (e) {
+      throw new Error('UA: ' + e.message);
+    }
+  }
+
+  // 17. Screen resolution
+  async function collectScreen() {
+    try {
+      if (!window.screen) return { supported: false };
+      return {
+        width: window.screen.width,
+        height: window.screen.height,
+        availWidth: window.screen.availWidth,
+        availHeight: window.screen.availHeight,
+        colorDepth: window.screen.colorDepth,
+        pixelDepth: window.screen.pixelDepth,
+        orientation: window.screen.orientation ? window.screen.orientation.type : 'N/A',
+        angle: window.screen.orientation ? window.screen.orientation.angle : 'N/A'
+      };
+    } catch (e) {
+      throw new Error('Screen: ' + e.message);
+    }
+  }
+
+  // 18. CPU cores, device memory (RAM)
+  async function collectHardware() {
+    try {
+      return {
+        hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
+        deviceMemory: navigator.deviceMemory || 'N/A',
+        // navigator.deviceMemory is in GB, only available in Chromium
+        maxTouchPoints: navigator.maxTouchPoints
+      };
+    } catch (e) {
+      throw new Error('Hardware: ' + e.message);
+    }
+  }
+
+  // 19. Cookie enabled, Do Not Track
+  async function collectPrivacy() {
+    try {
+      return {
+        cookieEnabled: navigator.cookieEnabled,
+        doNotTrack: navigator.doNotTrack || navigator.msDoNotTrack || window.doNotTrack || 'unspecified',
+        localStorageAvailable: (() => { try { localStorage.setItem('_test_', '1'); localStorage.removeItem('_test_'); return true; } catch(e) { return false; } })(),
+        sessionStorageAvailable: (() => { try { sessionStorage.setItem('_test_', '1'); sessionStorage.removeItem('_test_'); return true; } catch(e) { return false; } })()
+      };
+    } catch (e) {
+      throw new Error('Privacy: ' + e.message);
+    }
+  }
+
+  // 20. Online/offline status
+  async function collectConnectivity() {
+    try {
+      return {
+        online: navigator.onLine,
+        connectionType: navigator.connection ? navigator.connection.type : 'N/A'
+      };
+    } catch (e) {
+      throw new Error('Connectivity: ' + e.message);
+    }
+  }
+
+  // 21. Page URL and referrer
+  async function collectPageInfo() {
+    try {
+      return {
+        url: location.href,
+        path: location.pathname,
+        hostname: location.hostname,
+        referrer: document.referrer || '(direct)',
+        protocol: location.protocol,
+        origin: location.origin
+      };
+    } catch (e) {
+      throw new Error('Page: ' + e.message);
+    }
+  }
+
+  // ============================================================
+  // MAIN COLLECTION LOOP
+  // ============================================================
+
+  async function runCollection() {
+    for (let i = 0; i < CARD_DEFS.length; i++) {
+      const def = CARD_DEFS[i];
+      statusText.textContent = `Collecting: ${def.title}...`;
+      try {
+        const result = await def.collector();
+        STATE.data[def.id] = result;
+        updateCard(def.id, 'collected', formatValue(result));
+      } catch (err) {
+        STATE.data[def.id] = { error: err.message };
+        STATE.errors.push({ id: def.id, error: err.message });
+        updateCard(def.id, 'error', 'ERROR: ' + err.message);
+      }
+      updateRaw();
+      // Small delay for visual feedback
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    // All done - send data
+    statusDot.className = 'status-dot sent';
+    statusText.textContent = 'All data collected! Sending to server...';
+    await sendData();
+
+    const errCount = STATE.errors.length;
+    if (errCount > 0) {
+      statusText.textContent = `Complete with ${errCount} error(s). See cards marked in red.`;
+    } else {
+      statusText.textContent = 'Collection complete. All data sent successfully.';
+    }
+  }
+
+  function formatValue(val) {
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val === 'string') return val.length > 120 ? val.slice(0, 120) + '...' : val;
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (typeof val === 'number') return val.toString();
+    if (Array.isArray(val)) return val.length + ' items';
+    if (typeof val === 'object') {
+      const keys = Object.keys(val);
+      if (keys.length === 0) return '{}';
+      // Show first few key:value pairs
+      const parts = keys.slice(0, 4).map(k => {
+        const v = val[k];
+        if (typeof v === 'object') return `${k}: [...]`;
+        return `${k}: ${v}`;
+      });
+      if (keys.length > 4) parts.push('...');
+      return parts.join(' | ');
+    }
+    return String(val).slice(0, 120);
+  }
+
+  // ============================================================
+  // SEND DATA TO BACKEND
+  // ============================================================
+
+  async function sendData() {
+    try {
+      const resp = await fetch('/.netlify/functions/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(STATE.data)
+      });
+      const result = await resp.json();
+      statusText.textContent = `Data sent! Server: ${result.ip} (${result.city}, ${result.country})`;
+      // Append server response to raw payload
+      rawPayload.textContent = JSON.stringify(STATE.data, null, 2) +
+        '\n\n// === Server Response ===\n' +
+        JSON.stringify(result, null, 2);
+      return result;
+    } catch (e) {
+      statusDot.className = 'status-dot error';
+      statusText.textContent = 'Failed to send data: ' + e.message;
+      rawPayload.textContent = JSON.stringify(STATE.data, null, 2) +
+        '\n\n// === Send Error ===\n' + e.message;
+      throw e;
+    }
+  }
+
+  // ============================================================
+  // START
+  // ============================================================
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runCollection);
+  } else {
+    runCollection();
+  }
+})();
+</script>
+</body>
+</html>
