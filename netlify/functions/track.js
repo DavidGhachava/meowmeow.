@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, webhookStatus: resp.status })
+      body: JSON.stringify({ success: true, webhookStatus: resp.status, ip })
     };
   } catch (e) {
     return {
